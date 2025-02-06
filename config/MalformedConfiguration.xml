@@ -1,0 +1,35 @@
+<?xml version="1.0" ?>
+<!-- Version 1.0 -->
+
+<Template>
+	<Name></Name>
+	<Header>
+		<TemplateType>Test</TemplateType>
+		<Version>1</Version>
+		<Specification>Sample Configuration</Specification>
+		<Author>Tester</Author>
+	</Header>
+	
+	<Properties>
+		<Property>
+			<Name>Test-Property-1</Name>
+			<DataType>Integer</DataType>
+			<Value>0x1</Value>
+			<Description>This is a test property 1 that accepts only integers (decimal or hexadecimal) like this: 0xA or 10
+		</Property>
+		        
+		<Property>
+			<Name>Test-Property-2</Name>
+			<DataType>BitMap</DataType>
+			<Value>0b100101</Value>
+			<Description>This is a test property 2 that accepts bitmap like this: 0b1010101</Description>
+		</Property>        
+
+		<Property>
+			<Name>Test-Property-3</Name>
+			<DataType>Package</DataType>
+			<Value>0x1, 0x3, 0xA</Value>
+			<Description>This is a test property 3 that accepts intergers  (decimal or hexadecimal) like this: 0xA, 3, 0x4</Description>
+		</Property>
+	</Properties>
+</Template>
