@@ -16,6 +16,7 @@ logging.basicConfig(level=numeric_level, format='%(levelname)s: %(message)s')
 
 class MIPITextCtrl(wx.TextCtrl):
     """wx.TextCtrl extension to allow storing a description that will display on mouseover"""
+
     def __init__(self, *args, **kw):
         self.description = kw.pop("description")
         super().__init__(*args, **kw)
@@ -25,6 +26,7 @@ class MIPIConfigFrame(wx.Frame):
     wx.Frame that houses various wx components to display information about loaded xml configs
     TODO support editing and saving configurations
     """
+
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.xmlTree = None
@@ -42,6 +44,7 @@ class MIPIConfigFrame(wx.Frame):
         Constructs the top menu bar that allows for user actions,
         and binds those actions to corresponding events
         """
+
         fileMenu= wx.Menu()
 
         openMenuItem = fileMenu.Append(wx.ID_OPEN, "&Open\tCtrl+O"," Open a config file")
@@ -59,6 +62,7 @@ class MIPIConfigFrame(wx.Frame):
 
     def BuildStatusBar(self):
         """Constructs the bottom status bar that displays status messages to the user"""
+
         self.CreateStatusBar()
         self.SetStatusText("Open a config file to begin")
 
@@ -151,6 +155,7 @@ class MIPIConfigFrame(wx.Frame):
 
     def _OpenAndStoreXMLFile(self):
         """Open the file selection modal, and read the file into an XML tree"""
+
         self.directoryName = ''
         fileDialogue = wx.FileDialog(self, "Choose a file", self.directoryName, "", "*.xml", wx.FD_OPEN)
 
@@ -183,6 +188,7 @@ class MIPIConfigFrame(wx.Frame):
         Prompt the user to select an XML file, store the contents, and build the grid display
         Triggered when the app is initially run, or from the 'Open' menu option
         """
+
         self._OpenAndStoreXMLFile()
         self.BuildGrid()
 
@@ -191,12 +197,14 @@ class MIPIConfigFrame(wx.Frame):
         Display a message dialog box with some info about the app
         Triggered from the 'About' menu option
         """
+
         messageDialogue = wx.MessageDialog(self, "MIPI coding sample test by Keith Carriere", "About MIPI configuration editor", wx.OK)
         messageDialogue.ShowModal()
         messageDialogue.Destroy()
 
     def OnHoverCellWithDescription(self, event):
         """Display the Property's description on the box to the right of the grid"""
+
         if event.EventObject and not hasattr(event.EventObject, "description"):
             logging.debug(f"EventObject {event.EventObject.__class__.__name__} bound to OnHoverCellWithDescription without a description")
             event.Skip()
@@ -206,6 +214,7 @@ class MIPIConfigFrame(wx.Frame):
 
     def OnUnhoverCellWithDescription(self, event):
         """Clear out the description on the box to the right of the grid"""
+
         self.descriptionBox.SetLabelText(wx.EmptyString)
         event.Skip()
 
@@ -214,6 +223,7 @@ class MIPIConfigFrame(wx.Frame):
         Terminate the application
         Triggered from the 'Exit' menu option
         """
+
         self.Close(True)
 
 if __name__ == '__main__':
