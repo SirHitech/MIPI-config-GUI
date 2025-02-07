@@ -15,22 +15,28 @@ logging.basicConfig(level=numeric_level, format='%(levelname)s: %(message)s')
 
 
 class MIPITextCtrl(wx.TextCtrl):
-    """wx.TextCtrl extension to allow storing a description that will display on mouseover"""
+    """
+    wx.TextCtrl extension to allow storing:
+        description: will display on mouseover
+        datatype: used to validate input for value
+    """
 
     def __init__(self, *args, **kw):
         self.description = kw.pop("description")
+        self.datatype = kw.pop("datatype", None)
         super().__init__(*args, **kw)
 
 class MIPIConfigFrame(wx.Frame):
-    """
-    wx.Frame that houses various wx components to display information about loaded xml configs
-    TODO support editing and saving configurations
-    """
+    """wx.Frame that houses various wx components to display information about loaded xml configs"""
 
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
         self.xmlTree = None
         self.mainGrid = None
+        self.horizontalSizer = None
+        self.valueCells = []
+        self.directoryName = None
+        self.filename = None
         self.Build()
 
     def Build(self):
@@ -48,6 +54,7 @@ class MIPIConfigFrame(wx.Frame):
         fileMenu= wx.Menu()
 
         openMenuItem = fileMenu.Append(wx.ID_OPEN, "&Open\tCtrl+O"," Open a config file")
+        saveMenuItem = fileMenu.Append(wx.ID_SAVE, "&Save\tCtrl+S"," Save the config file")
         fileMenu.AppendSeparator()
         aboutMenuItem = fileMenu.Append(wx.ID_ABOUT, "&About"," Information about this program")
         exitMenuItem = fileMenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")
@@ -57,6 +64,7 @@ class MIPIConfigFrame(wx.Frame):
         self.SetMenuBar(menuBar)
 
         self.Bind(wx.EVT_MENU, self.OnOpen, openMenuItem)
+        self.Bind(wx.EVT_MENU, self.OnSave, saveMenuItem)
         self.Bind(wx.EVT_MENU, self.OnAbout, aboutMenuItem)
         self.Bind(wx.EVT_MENU, self.OnExit, exitMenuItem)
 
@@ -73,11 +81,7 @@ class MIPIConfigFrame(wx.Frame):
         """
 
         if self.mainGrid:
-            self.mainGrid.Clear(True)
-            self.mainGrid.Layout()
-            self.horizontalSizer.Clear(True)
-            self.horizontalSizer.Layout()
-            self.Refresh()
+            self._ClearGrid()
 
         # xml tree should have been set by opening a file first
         if not self.xmlTree:
@@ -99,26 +103,42 @@ class MIPIConfigFrame(wx.Frame):
         valueHeader = wx.TextCtrl(self, value="Value", size=(140, ROW_HEIGHT), style=wx.TE_READONLY)
         self.mainGrid.Add(valueHeader, pos=(0, 3))
 
-        # TODO make this look prettier (centered text, more grid-like)
         # one row per property from the loaded xml configuration
         rowIndex = 1
-        root = self.xmlTree.getroot()
-        for property in root.iter("Property"):
+        self.valueCells = []
+        for property in self.xmlTree.getroot().iter("Property"):
             rowLabel = wx.TextCtrl(self, value=str(rowIndex), size=(20, ROW_HEIGHT), style=wx.TE_READONLY)
             self.mainGrid.Add(rowLabel, pos=(rowIndex, 0))
+
+            name = getattr(property.find("Name"), "text", "") or ""
+            datatype = getattr(property.find("DataType"), "text", "") or ""
+            if not name or not datatype:
+                errorMessage = f"Name and DataType are required, and should be added to the template before loading"
+                errorDialogue = wx.MessageDialog(
+                    self,
+                    errorMessage,
+                    f"Error loading {self.filename}",
+                    wx.OK,
+                )
+                errorDialogue.ShowModal()
+                errorDialogue.Destroy()
+                self.SetStatusText(f"Error loading {self.filename}; {errorMessage}")
+                self._ClearGrid()
+                self.filename = None
+                return
 
             description = getattr(property.find("Description"), "text", "") or "(no description provided)"
 
             nameCell = MIPITextCtrl(
                 self,
-                value=getattr(property.find("Name"), "text", "") or "",
+                value=name,
                 size=(240, ROW_HEIGHT),
                 style=wx.TE_READONLY,
                 description=description,
             )
             datatypeCell = MIPITextCtrl(
                 self,
-                value=getattr(property.find("DataType"), "text", "") or "",
+                value=datatype,
                 size=(140, ROW_HEIGHT),
                 style=wx.TE_READONLY,
                 description=description,
@@ -128,7 +148,10 @@ class MIPIConfigFrame(wx.Frame):
                 value=getattr(property.find("Value"), "text", "") or "",
                 size=(140, ROW_HEIGHT),
                 description=description,
+                datatype=datatype,
             )
+
+            self.valueCells.append(valueCell)
 
             self.mainGrid.Add(nameCell, pos=(rowIndex, 1))
             self.mainGrid.Add(datatypeCell, pos=(rowIndex, 2))
@@ -153,11 +176,23 @@ class MIPIConfigFrame(wx.Frame):
 
         self.Layout()
 
-    def _OpenAndStoreXMLFile(self):
-        """Open the file selection modal, and read the file into an XML tree"""
+    def _ClearGrid(self):
+        if self.mainGrid:
+            self.mainGrid.Clear(True)
+            self.mainGrid.Layout()
+        if self.horizontalSizer:
+            self.horizontalSizer.Clear(True)
+            self.horizontalSizer.Layout()
+        self.Refresh()
 
-        self.directoryName = ''
-        fileDialogue = wx.FileDialog(self, "Choose a file", self.directoryName, "", "*.xml", wx.FD_OPEN)
+    def _OpenAndStoreXMLFile(self):
+        """
+        Open the file selection modal, and read the file into an XML tree
+        Returns:
+            (bool) if a file was selected and parsed without error
+        """
+
+        fileDialogue = wx.FileDialog(self, "Choose a file", "", "", "*.xml", wx.FD_OPEN)
 
         if fileDialogue.ShowModal() == wx.ID_OK:
             self.filename = fileDialogue.GetFilename()
@@ -175,11 +210,25 @@ class MIPIConfigFrame(wx.Frame):
                 errorDialogue.ShowModal()
                 errorDialogue.Destroy()
                 fileDialogue.Destroy()
-                return
+                self.filename = None
+                self.directoryName = None
+                return False
 
             logging.info(f"File parsing complete")
             self.SetStatusText(f"Loaded file {self.filename}")
         fileDialogue.Destroy()
+        return True
+
+    def _SaveXMLFile(self):
+        index = 0
+        for property in self.xmlTree.getroot().iter("Property"):
+            property.find("Value").text = self.valueCells[index].GetValue()
+            index += 1
+
+        logging.info(f"Attempting to save file {self.filename}")
+        self.xmlTree.write(os.path.join(self.directoryName, self.filename))
+        logging.info(f"Save complete")
+        self.SetStatusText(f"Saved {self.filename}")
 
     ### Events
 
@@ -189,8 +238,28 @@ class MIPIConfigFrame(wx.Frame):
         Triggered when the app is initially run, or from the 'Open' menu option
         """
 
-        self._OpenAndStoreXMLFile()
-        self.BuildGrid()
+        success = self._OpenAndStoreXMLFile()
+        if success:
+            self.BuildGrid()
+
+    def OnSave(self, event):
+        """
+        Save the currently loaded XML file
+        If there is no file loaded, lets the user know via a dialogue
+        Triggered from the 'Save' menu option
+        """
+
+        if self.filename:
+            self._SaveXMLFile()
+        else:
+            messageDialogue = wx.MessageDialog(
+                self,
+                "Cannot save without a template. Load a file from File -> Open first",
+                "Unable to Save",
+                wx.OK,
+            )
+            messageDialogue.ShowModal()
+            messageDialogue.Destroy()
 
     def OnAbout(self, event):
         """
