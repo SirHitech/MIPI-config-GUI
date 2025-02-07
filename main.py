@@ -55,6 +55,7 @@ class MIPIConfigFrame(wx.Frame):
 
         openMenuItem = fileMenu.Append(wx.ID_OPEN, "&Open\tCtrl+O"," Open a config file")
         saveMenuItem = fileMenu.Append(wx.ID_SAVE, "&Save\tCtrl+S"," Save the config file")
+        saveAsMenuItem = fileMenu.Append(wx.ID_SAVEAS, "Save As\tCtrl+Shift+S"," Save as a new config file")
         fileMenu.AppendSeparator()
         aboutMenuItem = fileMenu.Append(wx.ID_ABOUT, "&About"," Information about this program")
         exitMenuItem = fileMenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")
@@ -65,6 +66,7 @@ class MIPIConfigFrame(wx.Frame):
 
         self.Bind(wx.EVT_MENU, self.OnOpen, openMenuItem)
         self.Bind(wx.EVT_MENU, self.OnSave, saveMenuItem)
+        self.Bind(wx.EVT_MENU, self.OnSaveAs, saveAsMenuItem)
         self.Bind(wx.EVT_MENU, self.OnAbout, aboutMenuItem)
         self.Bind(wx.EVT_MENU, self.OnExit, exitMenuItem)
 
@@ -220,14 +222,27 @@ class MIPIConfigFrame(wx.Frame):
         fileDialogue.Destroy()
         return True
 
-    def _SaveXMLFile(self):
+    def _SaveXMLFile(self, asNew=False):
         index = 0
         for property in self.xmlTree.getroot().iter("Property"):
             property.find("Value").text = self.valueCells[index].GetValue()
             index += 1
 
+        if asNew:
+            fileDialogue = wx.FileDialog(self, "Save As", "", "", "*.xml", wx.FD_SAVE)
+            if fileDialogue.ShowModal() == wx.ID_OK:
+                self.filename = fileDialogue.GetFilename()
+                self.directoryName = fileDialogue.GetDirectory()
+                filePath = os.path.join(self.directoryName, self.filename)
+                self._WriteFile(filePath=filePath)
+            fileDialogue.Destroy()
+        else:
+            filePath = os.path.join(self.directoryName, self.filename)
+            self._WriteFile(filePath=filePath)
+
+    def _WriteFile(self, filePath):
         logging.info(f"Attempting to save file {self.filename}")
-        self.xmlTree.write(os.path.join(self.directoryName, self.filename))
+        self.xmlTree.write(filePath, encoding="utf-8", xml_declaration=True)
         logging.info(f"Save complete")
         self.SetStatusText(f"Saved {self.filename}")
 
@@ -252,6 +267,25 @@ class MIPIConfigFrame(wx.Frame):
 
         if self.filename:
             self._SaveXMLFile()
+        else:
+            messageDialogue = wx.MessageDialog(
+                self,
+                "Cannot save without a template. Load a file from File -> Open first",
+                "Unable to Save",
+                wx.OK,
+            )
+            messageDialogue.ShowModal()
+            messageDialogue.Destroy()
+
+    def OnSaveAs(self, event):
+        """
+        Save the currently loaded XML as a new file
+        If there is no file loaded, lets the user know via a dialogue
+        Triggered from the 'Save' menu option
+        """
+
+        if self.filename:
+            self._SaveXMLFile(asNew=True)
         else:
             messageDialogue = wx.MessageDialog(
                 self,
