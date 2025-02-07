@@ -183,6 +183,7 @@ class MIPIConfigFrame(wx.Frame):
         if self.horizontalSizer:
             self.horizontalSizer.Clear(True)
             self.horizontalSizer.Layout()
+        self.valueCells = []
         self.Refresh()
 
     def _OpenAndStoreXMLFile(self):
