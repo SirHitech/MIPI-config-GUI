@@ -8,3 +8,5 @@ Tested on:
 - Linux (Debian 12) Python 3.11.2
 
 ![image](https://github.com/user-attachments/assets/e51aa0ca-d869-4bc9-8867-cd4f6549195a)
+
+![image](https://github.com/user-attachments/assets/9f4bb57f-b1e1-442d-8023-a5174ca6af6a)
