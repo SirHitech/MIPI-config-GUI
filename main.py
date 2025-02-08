@@ -102,11 +102,11 @@ class MIPIConfigFrame(wx.Frame):
         self.mainGrid.Add(wx.TextCtrl(self, size=(ROW_WIDITH, ROW_HEIGHT), style=wx.TE_READONLY), pos=(0, 0))
 
         # headers
-        nameHeader = wx.TextCtrl(self, value="Property Name", size=(240, ROW_HEIGHT), style=wx.TE_READONLY)
+        nameHeader = wx.TextCtrl(self, value="Property Name", size=(240, ROW_HEIGHT), style=wx.TE_READONLY | wx.TE_CENTER)
         self.mainGrid.Add(nameHeader, pos=(0, 1))
-        datatypeHeader = wx.TextCtrl(self, value="Data Type", size=(140, ROW_HEIGHT), style=wx.TE_READONLY)
+        datatypeHeader = wx.TextCtrl(self, value="Data Type", size=(140, ROW_HEIGHT), style=wx.TE_READONLY | wx.TE_CENTER)
         self.mainGrid.Add(datatypeHeader, pos=(0, 2))
-        valueHeader = wx.TextCtrl(self, value="Value", size=(140, ROW_HEIGHT), style=wx.TE_READONLY)
+        valueHeader = wx.TextCtrl(self, value="Value", size=(140, ROW_HEIGHT), style=wx.TE_READONLY | wx.TE_CENTER)
         self.mainGrid.Add(valueHeader, pos=(0, 3))
 
         # one row per property from the loaded xml configuration
@@ -175,11 +175,15 @@ class MIPIConfigFrame(wx.Frame):
             rowIndex += 1
 
         # description box on the right
+        descriptionHeader = wx.TextCtrl(self, value="Description", size=(200, -1), style=wx.TE_READONLY)
         self.descriptionBox = wx.TextCtrl(self, size=(200, 200), style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.verticalSizer = wx.BoxSizer(wx.VERTICAL)
+        self.verticalSizer.Add(descriptionHeader)
+        self.verticalSizer.Add(self.descriptionBox)
 
         self.horizontalSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.horizontalSizer.Add(self.mainGrid, 0, wx.ALL, 5)
-        self.horizontalSizer.Add(self.descriptionBox)
+        self.horizontalSizer.Add(self.mainGrid, 0, wx.ALL, 0)
+        self.horizontalSizer.Add(self.verticalSizer)
         self.SetSizerAndFit(self.horizontalSizer)
 
         self.Layout()
