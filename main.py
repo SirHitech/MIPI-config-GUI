@@ -93,12 +93,13 @@ class MIPIConfigFrame(wx.Frame):
             logging.debug("BuildGrid attempted without an xmlTree, aborting")
             return
 
-        ROW_HEIGHT = 20
+        ROW_WIDITH = 40
+        ROW_HEIGHT = 40
 
         self.mainGrid = wx.GridBagSizer(hgap=0, vgap=0)
 
         # blank space top left
-        self.mainGrid.Add(wx.TextCtrl(self, size=(20, ROW_HEIGHT), style=wx.TE_READONLY), pos=(0, 0))
+        self.mainGrid.Add(wx.TextCtrl(self, size=(ROW_WIDITH, ROW_HEIGHT), style=wx.TE_READONLY), pos=(0, 0))
 
         # headers
         nameHeader = wx.TextCtrl(self, value="Property Name", size=(240, ROW_HEIGHT), style=wx.TE_READONLY)
@@ -112,7 +113,7 @@ class MIPIConfigFrame(wx.Frame):
         rowIndex = 1
         self.valueCells = []
         for property in self.xmlTree.getroot().iter("Property"):
-            rowLabel = wx.TextCtrl(self, value=str(rowIndex), size=(20, ROW_HEIGHT), style=wx.TE_READONLY)
+            rowLabel = wx.TextCtrl(self, value=str(rowIndex), size=(ROW_WIDITH, ROW_HEIGHT), style=wx.TE_READONLY)
             self.mainGrid.Add(rowLabel, pos=(rowIndex, 0))
 
             name = getattr(property.find("Name"), "text", "") or ""
