@@ -86,7 +86,7 @@ class MIPIConfigFrame(wx.Frame):
         """
 
         if self.mainGrid:
-            self._ClearGrid()
+            self.ClearGrid()
 
         # xml tree should have been set by opening a file first
         if not self.xmlTree:
@@ -128,7 +128,7 @@ class MIPIConfigFrame(wx.Frame):
                 errorDialogue.ShowModal()
                 errorDialogue.Destroy()
                 self.SetStatusText(f"Error loading {self.filename}; {errorMessage}")
-                self._ClearGrid()
+                self.ClearGrid()
                 self.filename = None
                 return
 
@@ -183,7 +183,7 @@ class MIPIConfigFrame(wx.Frame):
 
         self.Layout()
 
-    def _ClearGrid(self):
+    def ClearGrid(self):
         """Clear out the grid and stored input cells array, and refresh layout"""
         if self.mainGrid:
             self.mainGrid.Clear(True)
@@ -194,7 +194,7 @@ class MIPIConfigFrame(wx.Frame):
         self.valueCells = []
         self.Refresh()
 
-    def _OpenAndStoreXMLFile(self):
+    def OpenAndStoreXMLFile(self):
         """
         Open the file selection modal, and read the file into an XML tree
         Returns:
@@ -228,7 +228,7 @@ class MIPIConfigFrame(wx.Frame):
         fileDialogue.Destroy()
         return True
 
-    def _SaveXMLFile(self, asNew=False):
+    def SaveXMLFile(self, asNew=False):
         """
         Modify the XML with the values loaded in the input fields, and write it as a file
         Optionally can be written as a new file instead of overwriting the current file
@@ -244,20 +244,20 @@ class MIPIConfigFrame(wx.Frame):
                 self.filename = fileDialogue.GetFilename()
                 self.directoryName = fileDialogue.GetDirectory()
                 filePath = os.path.join(self.directoryName, self.filename)
-                self._WriteFile(filePath=filePath)
+                self.WriteFile(filePath=filePath)
             fileDialogue.Destroy()
         else:
             filePath = os.path.join(self.directoryName, self.filename)
-            self._WriteFile(filePath=filePath)
+            self.WriteFile(filePath=filePath)
 
-    def _WriteFile(self, filePath):
+    def WriteFile(self, filePath):
         """Write the XML to a file, log and update status text appropriately"""
         logging.info(f"Attempting to save file {self.filename}")
         self.xmlTree.write(filePath, encoding="utf-8", xml_declaration=True)
         logging.info(f"Save complete")
         self.SetStatusText(f"Saved {self.filename}")
 
-    def _Validate(self, text, datatype):
+    def Validate(self, text, datatype):
         """
         Main entrypoint for validating input
         Returns:
@@ -267,16 +267,16 @@ class MIPIConfigFrame(wx.Frame):
             # empty textbox is always fine
             return True, ""
         if datatype.lower() == "integer":
-            return self._IsValidDecOrHex(text)
+            return self.IsValidDecOrHex(text)
         elif datatype.lower() == "bitmap":
-            return self._IsValidBitMap(text)
+            return self.IsValidBitMap(text)
         elif datatype.lower() == "package":
-            return self._IsValidPackage(text)
+            return self.IsValidPackage(text)
         else:
             # unknown datatype
             return False, f"Unknown datatype {datatype}"
 
-    def _IsValidDecOrHex(self, value):
+    def IsValidDecOrHex(self, value):
         """
         Returns:
             (bool, str) if the given string value is valid as either a decimal or hexidecimal
@@ -288,7 +288,7 @@ class MIPIConfigFrame(wx.Frame):
             return True, ""
         return False, errorMessage
 
-    def _IsValidBitMap(self, value):
+    def IsValidBitMap(self, value):
         """
         Returns:
             (bool, str) if the given string value is valid as a BitMap
@@ -300,7 +300,7 @@ class MIPIConfigFrame(wx.Frame):
             return True, ""
         return False, errorMessage
 
-    def _IsValidPackage(self, value):
+    def IsValidPackage(self, value):
         """
         Returns:
             (bool, str) if the given string value contains a comma separated set of valid decimals or hexidecimals,
@@ -325,7 +325,7 @@ class MIPIConfigFrame(wx.Frame):
             (bool, str) if all fields have valid input, or the first error message if not
         """
         for cell in self.valueCells:
-            isValid, errorMessage = self._Validate(cell.GetValue(), cell.datatype)
+            isValid, errorMessage = self.Validate(cell.GetValue(), cell.datatype)
             if not isValid:
                 return isValid, errorMessage
         return True, ""
@@ -338,7 +338,7 @@ class MIPIConfigFrame(wx.Frame):
         Triggered when the app is initially run, or from the 'Open' menu option
         """
 
-        success = self._OpenAndStoreXMLFile()
+        success = self.OpenAndStoreXMLFile()
         if success:
             self.BuildGrid()
             isValid, errorMessage = self.ValidateAllInput()
@@ -353,7 +353,7 @@ class MIPIConfigFrame(wx.Frame):
                 messageDialogue.Destroy()
                 self.SetStatusText(f"Error loading {self.filename}; {errorMessage}")
                 self.filename = None
-                self._ClearGrid()
+                self.ClearGrid()
 
     def OnSave(self, event):
         """
@@ -375,7 +375,7 @@ class MIPIConfigFrame(wx.Frame):
                 messageDialogue.Destroy()
                 self.SetStatusText(f"Cannot save file with invalid data: {errorMessage}")
             else:
-                self._SaveXMLFile()
+                self.SaveXMLFile()
         else:
             messageDialogue = wx.MessageDialog(
                 self,
@@ -395,7 +395,7 @@ class MIPIConfigFrame(wx.Frame):
         """
 
         if self.filename:
-            self._SaveXMLFile(asNew=True)
+            self.SaveXMLFile(asNew=True)
         else:
             messageDialogue = wx.MessageDialog(
                 self,
@@ -464,7 +464,7 @@ class MIPIConfigFrame(wx.Frame):
         mipiTextCtrl = event.EventObject
 
         if mipiTextCtrl.GetValue():
-            isValid, errorMessage = self._Validate(mipiTextCtrl.GetValue(), mipiTextCtrl.datatype)
+            isValid, errorMessage = self.Validate(mipiTextCtrl.GetValue(), mipiTextCtrl.datatype)
             if not isValid:
                 mipiTextCtrl.SetValue(mipiTextCtrl.prevalidatedText)
                 messageDialogue = wx.MessageDialog(
