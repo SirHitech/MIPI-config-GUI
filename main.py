@@ -194,7 +194,7 @@ class MIPIConfigFrame(wx.Frame):
         self.valueCells = []
         self.Refresh()
 
-    def OpenAndStoreXMLFile(self):
+    def OpenFileAndLoadXML(self):
         """
         Open the file selection modal, and read the file into an XML tree
         Returns:
@@ -202,7 +202,7 @@ class MIPIConfigFrame(wx.Frame):
         """
 
         fileDialogue = wx.FileDialog(self, "Choose a file", "", "", "*.xml", wx.FD_OPEN)
-
+        success = True
         if fileDialogue.ShowModal() == wx.ID_OK:
             self.filename = fileDialogue.GetFilename()
             self.directoryName = fileDialogue.GetDirectory()
@@ -225,8 +225,10 @@ class MIPIConfigFrame(wx.Frame):
 
             logging.info(f"File parsing complete")
             self.SetStatusText(f"Loaded file {self.filename}")
+        else:
+            success = False
         fileDialogue.Destroy()
-        return True
+        return success
 
     def SaveXMLFile(self, asNew=False):
         """
@@ -338,7 +340,7 @@ class MIPIConfigFrame(wx.Frame):
         Triggered when the app is initially run, or from the 'Open' menu option
         """
 
-        success = self.OpenAndStoreXMLFile()
+        success = self.OpenFileAndLoadXML()
         if success:
             self.BuildGrid()
             isValid, errorMessage = self.ValidateAllInput()
