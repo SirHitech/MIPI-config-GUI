@@ -1,5 +1,6 @@
 import argparse
 import logging
+import re
 import os
 import wx
 import xml.etree.ElementTree as ET
@@ -25,6 +26,8 @@ class MIPITextCtrl(wx.TextCtrl):
         self.description = kw.pop("description")
         self.datatype = kw.pop("datatype", None)
         super().__init__(*args, **kw)
+        self.prevalidatedText = None
+
 
 class MIPIConfigFrame(wx.Frame):
     """wx.Frame that houses various wx components to display information about loaded xml configs"""
@@ -165,6 +168,8 @@ class MIPIConfigFrame(wx.Frame):
             datatypeCell.Bind(wx.EVT_LEAVE_WINDOW, self.OnUnhoverCellWithDescription)
             valueCell.Bind(wx.EVT_ENTER_WINDOW, self.OnHoverCellWithDescription)
             valueCell.Bind(wx.EVT_LEAVE_WINDOW, self.OnUnhoverCellWithDescription)
+            valueCell.Bind(wx.EVT_SET_FOCUS, self.OnSetFocus)
+            valueCell.Bind(wx.EVT_KILL_FOCUS, self.OnKillFocus)
 
             rowIndex += 1
 
@@ -179,6 +184,7 @@ class MIPIConfigFrame(wx.Frame):
         self.Layout()
 
     def _ClearGrid(self):
+        """Clear out the grid and stored input cells array, and refresh layout"""
         if self.mainGrid:
             self.mainGrid.Clear(True)
             self.mainGrid.Layout()
@@ -223,6 +229,10 @@ class MIPIConfigFrame(wx.Frame):
         return True
 
     def _SaveXMLFile(self, asNew=False):
+        """
+        Modify the XML with the values loaded in the input fields, and write it as a file
+        Optionally can be written as a new file instead of overwriting the current file
+        """
         index = 0
         for property in self.xmlTree.getroot().iter("Property"):
             property.find("Value").text = self.valueCells[index].GetValue()
@@ -241,10 +251,84 @@ class MIPIConfigFrame(wx.Frame):
             self._WriteFile(filePath=filePath)
 
     def _WriteFile(self, filePath):
+        """Write the XML to a file, log and update status text appropriately"""
         logging.info(f"Attempting to save file {self.filename}")
         self.xmlTree.write(filePath, encoding="utf-8", xml_declaration=True)
         logging.info(f"Save complete")
         self.SetStatusText(f"Saved {self.filename}")
+
+    def _Validate(self, text, datatype):
+        """
+        Main entrypoint for validating input
+        Returns:
+            (bool, str) is the input valid for the given datatype, and the error message if not
+        """
+        if not text:
+            # empty textbox is always fine
+            return True, ""
+        if datatype.lower() == "integer":
+            return self._IsValidDecOrHex(text)
+        elif datatype.lower() == "bitmap":
+            return self._IsValidBitMap(text)
+        elif datatype.lower() == "package":
+            return self._IsValidPackage(text)
+        else:
+            # unknown datatype
+            return False, f"Unknown datatype {datatype}"
+
+    def _IsValidDecOrHex(self, value):
+        """
+        Returns:
+            (bool, str) if the given string value is valid as either a decimal or hexidecimal
+                and the relevant error message if not
+        """
+        rule = re.compile(r"^(?:\d+|0[xX][0-9a-fA-F]+)$")
+        errorMessage = "Integer should be entered in decimal (12) or hexidecimal (0xF)"
+        if rule.search(value):
+            return True, ""
+        return False, errorMessage
+
+    def _IsValidBitMap(self, value):
+        """
+        Returns:
+            (bool, str) if the given string value is valid as a BitMap
+                and the relevant error message if not
+        """
+        rule = re.compile(r"^0b[01]+$")
+        errorMessage = "BitMap should be entered in the format (0b1010101)"
+        if rule.search(value):
+            return True, ""
+        return False, errorMessage
+
+    def _IsValidPackage(self, value):
+        """
+        Returns:
+            (bool, str) if the given string value contains a comma separated set of valid decimals or hexidecimals,
+                and the relevant error message if not
+        """
+        decOrHexPattern = r"(?:\d+|0[xX][0-9a-fA-F]+)"
+        # regex breakdown:
+        #   ^ beginning of string
+        #   match 1 dec or hex value
+        #   (?:,\s + decOrHex + )* match 0 or more comma-whitespace-decOrHex
+        #   $ end of string
+        rule = re.compile(r"^" + decOrHexPattern + r"(?:,\s" + decOrHexPattern + r")*$")
+        errorMessage = "Package should be enetered as a combination of decimals or hexidecimals in a comma separated list (0xA, 3, 0x4)"
+        if not rule.search(value.strip()):
+            return False, errorMessage
+        return True, ""
+
+    def ValidateAllInput(self):
+        """
+        Runs validation against all input fields
+        Returns:
+            (bool, str) if all fields have valid input, or the first error message if not
+        """
+        for cell in self.valueCells:
+            isValid, errorMessage = self._Validate(cell.GetValue(), cell.datatype)
+            if not isValid:
+                return isValid, errorMessage
+        return True, ""
 
     ### Events
 
@@ -257,6 +341,19 @@ class MIPIConfigFrame(wx.Frame):
         success = self._OpenAndStoreXMLFile()
         if success:
             self.BuildGrid()
+            isValid, errorMessage = self.ValidateAllInput()
+            if not isValid:
+                messageDialogue = wx.MessageDialog(
+                    self,
+                    f"Loaded file has invalid data: {errorMessage}",
+                    "Validation Error",
+                    wx.OK,
+                )
+                messageDialogue.ShowModal()
+                messageDialogue.Destroy()
+                self.SetStatusText(f"Error loading {self.filename}; {errorMessage}")
+                self.filename = None
+                self._ClearGrid()
 
     def OnSave(self, event):
         """
@@ -266,7 +363,19 @@ class MIPIConfigFrame(wx.Frame):
         """
 
         if self.filename:
-            self._SaveXMLFile()
+            isValid, errorMessage = self.ValidateAllInput()
+            if not isValid:
+                messageDialogue = wx.MessageDialog(
+                    self,
+                    f"Cannot save file with invalid data: {errorMessage}",
+                    "Validation Error",
+                    wx.OK,
+                )
+                messageDialogue.ShowModal()
+                messageDialogue.Destroy()
+                self.SetStatusText(f"Cannot save file with invalid data: {errorMessage}")
+            else:
+                self._SaveXMLFile()
         else:
             messageDialogue = wx.MessageDialog(
                 self,
@@ -276,6 +385,7 @@ class MIPIConfigFrame(wx.Frame):
             )
             messageDialogue.ShowModal()
             messageDialogue.Destroy()
+            self.SetStatusText("Open a config file to begin")
 
     def OnSaveAs(self, event):
         """
@@ -295,6 +405,7 @@ class MIPIConfigFrame(wx.Frame):
             )
             messageDialogue.ShowModal()
             messageDialogue.Destroy()
+            self.SetStatusText("Open a config file to begin")
 
     def OnAbout(self, event):
         """
@@ -322,6 +433,54 @@ class MIPIConfigFrame(wx.Frame):
         self.descriptionBox.SetLabelText(wx.EmptyString)
         event.Skip()
 
+    def OnSetFocus(self, event):
+        """
+        Event triggered when a user enters the text field for input
+        Stores the current text to potentially be restored later (see OnKillFocus)
+        """
+
+        if event.EventObject and not hasattr(event.EventObject, "prevalidatedText") or not hasattr(event.EventObject, "datatype"):
+            logging.debug(f"EventObject {event.EventObject.__class__.__name__} bound to OnSetFocus without prevalidatedText and/or datatype")
+            event.Skip()
+            return
+
+        mipiTextCtrl = event.EventObject
+        mipiTextCtrl.prevalidatedText = mipiTextCtrl.GetValue()
+
+        event.Skip()
+
+    def OnKillFocus(self, event):
+        """
+        Event triggered when a user leaves the text field
+        Validates the input against the given datatype for that row
+        If invalid, notifies the user and restores the prevalidated text
+        """
+
+        if event.EventObject and not hasattr(event.EventObject, "prevalidatedText") or not hasattr(event.EventObject, "datatype"):
+            logging.debug(f"EventObject {event.EventObject.__class__.__name__} bound to OnKillFocus without prevalidatedText and/or datatype")
+            event.Skip()
+            return
+
+        mipiTextCtrl = event.EventObject
+
+        if mipiTextCtrl.GetValue():
+            isValid, errorMessage = self._Validate(mipiTextCtrl.GetValue(), mipiTextCtrl.datatype)
+            if not isValid:
+                mipiTextCtrl.SetValue(mipiTextCtrl.prevalidatedText)
+                messageDialogue = wx.MessageDialog(
+                    self,
+                    errorMessage,
+                    "Validation Error",
+                    wx.OK,
+                )
+                messageDialogue.ShowModal()
+                messageDialogue.Destroy()
+                # Focus is returned to the TextCtrl when the dialogue box is closed, but in an odd manner that hides the caret
+                # Instead return the focus to the main frame and the user can choose to click back to fix the validation error
+                self.SetFocus()
+
+        event.Skip()
+
     def OnExit(self, event):
         """
         Terminate the application
@@ -329,6 +488,7 @@ class MIPIConfigFrame(wx.Frame):
         """
 
         self.Close(True)
+
 
 if __name__ == '__main__':
     # When this module is run (not imported) then create the app, the
