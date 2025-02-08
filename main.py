@@ -429,7 +429,7 @@ class MIPIConfigFrame(wx.Frame):
             logging.debug(f"EventObject {event.EventObject.__class__.__name__} bound to OnHoverCellWithDescription without a description")
             event.Skip()
             return
-        self.descriptionBox.SetLabelText(event.EventObject.description)
+        self.descriptionBox.SetValue(event.EventObject.description)
         event.Skip()
 
     def OnUnhoverCellWithDescription(self, event):
@@ -437,7 +437,7 @@ class MIPIConfigFrame(wx.Frame):
 
         logging.debug(f"Event OnUnhover triggered for {event.EventObject}")
 
-        self.descriptionBox.SetLabelText(wx.EmptyString)
+        self.descriptionBox.SetValue(wx.EmptyString)
         event.Skip()
 
     def OnSetFocus(self, event):
