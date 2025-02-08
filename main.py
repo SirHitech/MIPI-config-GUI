@@ -420,6 +420,8 @@ class MIPIConfigFrame(wx.Frame):
     def OnHoverCellWithDescription(self, event):
         """Display the Property's description on the box to the right of the grid"""
 
+        logging.debug(f"Event OnHover triggered for {event.EventObject}")
+
         if event.EventObject and not hasattr(event.EventObject, "description"):
             logging.debug(f"EventObject {event.EventObject.__class__.__name__} bound to OnHoverCellWithDescription without a description")
             event.Skip()
@@ -430,6 +432,8 @@ class MIPIConfigFrame(wx.Frame):
     def OnUnhoverCellWithDescription(self, event):
         """Clear out the description on the box to the right of the grid"""
 
+        logging.debug(f"Event OnUnhover triggered for {event.EventObject}")
+
         self.descriptionBox.SetLabelText(wx.EmptyString)
         event.Skip()
 
@@ -438,6 +442,8 @@ class MIPIConfigFrame(wx.Frame):
         Event triggered when a user enters the text field for input
         Stores the current text to potentially be restored later (see OnKillFocus)
         """
+
+        logging.debug(f"Event OnSetFocus triggered for {event.EventObject}")
 
         if event.EventObject and not hasattr(event.EventObject, "prevalidatedText") or not hasattr(event.EventObject, "datatype"):
             logging.debug(f"EventObject {event.EventObject.__class__.__name__} bound to OnSetFocus without prevalidatedText and/or datatype")
@@ -455,6 +461,8 @@ class MIPIConfigFrame(wx.Frame):
         Validates the input against the given datatype for that row
         If invalid, notifies the user and restores the prevalidated text
         """
+
+        logging.debug(f"Event OnKillFocus triggered for {event.EventObject}")
 
         if event.EventObject and not hasattr(event.EventObject, "prevalidatedText") or not hasattr(event.EventObject, "datatype"):
             logging.debug(f"EventObject {event.EventObject.__class__.__name__} bound to OnKillFocus without prevalidatedText and/or datatype")
